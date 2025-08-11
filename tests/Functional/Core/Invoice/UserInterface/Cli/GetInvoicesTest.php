@@ -115,6 +115,25 @@ class GetInvoicesTest extends KernelTestCase
     }
 
     /**
+     * This test verifies that the command returns an error when an invalid status is provided
+     */
+    public function testExecuteReturnsErrorForInvalidStatus(): void
+    {
+        // Execute command with an invalid status
+        $this->commandTester->execute([
+            'status' => 'invalidstatus',
+            'amount' => 10000,
+        ]);
+
+        // Check that the command returned INVALID
+        $this->assertEquals(\Symfony\Component\Console\Command\Command::INVALID, $this->commandTester->getStatusCode());
+
+        // Check that the error message is displayed
+        $output = $this->commandTester->getDisplay();
+        $this->assertStringContainsString('Invalid status provided', $output);
+    }
+
+    /**
      * This test shows how the repository should handle canceled invoices
      */
     public function testExecuteReturnsInvoicesWithCanceledStatusAndAmount(): void
