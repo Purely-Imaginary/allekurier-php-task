@@ -2,8 +2,9 @@
 
 namespace App\Tests\Unit\Core\User\UserInterface\Cli;
 
-use App\Core\User\Domain\Repository\UserRepositoryInterface;
-use App\Core\User\Domain\User;
+use App\Common\Bus\QueryBusInterface;
+use App\Core\User\Application\DTO\UserDTO;
+use App\Core\User\Application\Query\GetInactiveUsers\GetInactiveUsersQuery;
 use App\Core\User\UserInterface\Cli\GetInactiveUsers;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -11,7 +12,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 class GetInactiveUsersTest extends TestCase
 {
-    private UserRepositoryInterface|MockObject $userRepository;
+    private QueryBusInterface|MockObject $queryBus;
     private GetInactiveUsers $command;
     private CommandTester $commandTester;
 
@@ -20,7 +21,7 @@ class GetInactiveUsersTest extends TestCase
         parent::setUp();
 
         $this->command = new GetInactiveUsers(
-            $this->userRepository = $this->createMock(UserRepositoryInterface::class)
+            $this->queryBus = $this->createMock(QueryBusInterface::class)
         );
 
         $this->commandTester = new CommandTester($this->command);
@@ -28,11 +29,12 @@ class GetInactiveUsersTest extends TestCase
 
     public function test_execute_displays_inactive_users_emails(): void
     {
-        $user1 = new User('user1@example.com', false);
-        $user2 = new User('user2@example.com', false);
+        $user1 = new UserDTO(1, 'user1@example.com', false);
+        $user2 = new UserDTO(2, 'user2@example.com', false);
 
-        $this->userRepository->expects(self::once())
-            ->method('getInactiveUsers')
+        $this->queryBus->expects(self::once())
+            ->method('dispatch')
+            ->with(self::isInstanceOf(GetInactiveUsersQuery::class))
             ->willReturn([$user1, $user2]);
 
         $this->commandTester->execute([]);
@@ -44,8 +46,9 @@ class GetInactiveUsersTest extends TestCase
 
     public function test_execute_displays_message_when_no_inactive_users(): void
     {
-        $this->userRepository->expects(self::once())
-            ->method('getInactiveUsers')
+        $this->queryBus->expects(self::once())
+            ->method('dispatch')
+            ->with(self::isInstanceOf(GetInactiveUsersQuery::class))
             ->willReturn([]);
 
         $this->commandTester->execute([]);

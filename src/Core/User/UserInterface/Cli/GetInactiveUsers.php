@@ -2,7 +2,9 @@
 
 namespace App\Core\User\UserInterface\Cli;
 
-use App\Core\User\Domain\Repository\UserRepositoryInterface;
+use App\Common\Bus\QueryBusInterface;
+use App\Core\User\Application\DTO\UserDTO;
+use App\Core\User\Application\Query\GetInactiveUsers\GetInactiveUsersQuery;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -14,22 +16,23 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class GetInactiveUsers extends Command
 {
-    public function __construct(private readonly UserRepositoryInterface $userRepository)
+    public function __construct(private readonly QueryBusInterface $bus)
     {
         parent::__construct();
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $users = $this->userRepository->getInactiveUsers();
+        $users = $this->bus->dispatch(new GetInactiveUsersQuery());
 
         if (empty($users)) {
             $output->writeln('Brak nieaktywnych użytkowników.');
             return Command::SUCCESS;
         }
 
+        /** @var UserDTO $user */
         foreach ($users as $user) {
-            $output->writeln($user->getEmail());
+            $output->writeln($user->email);
         }
 
         return Command::SUCCESS;

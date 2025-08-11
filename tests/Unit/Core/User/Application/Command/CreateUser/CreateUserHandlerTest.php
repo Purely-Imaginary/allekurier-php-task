@@ -2,18 +2,20 @@
 
 namespace App\Tests\Unit\Core\User\Application\Command\CreateUser;
 
-use App\Common\Mailer\MailerInterface;
 use App\Core\User\Application\Command\CreateUser\CreateUserCommand;
 use App\Core\User\Application\Command\CreateUser\CreateUserHandler;
+use App\Core\User\Domain\Event\UserCreatedEvent;
 use App\Core\User\Domain\Repository\UserRepositoryInterface;
 use App\Core\User\Domain\User;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 class CreateUserHandlerTest extends TestCase
 {
     private UserRepositoryInterface|MockObject $userRepository;
-    private MailerInterface|MockObject $mailer;
+    private MessageBusInterface|MockObject $messageBus;
     private CreateUserHandler $handler;
 
     protected function setUp(): void
@@ -22,7 +24,7 @@ class CreateUserHandlerTest extends TestCase
 
         $this->handler = new CreateUserHandler(
             $this->userRepository = $this->createMock(UserRepositoryInterface::class),
-            $this->mailer = $this->createMock(MailerInterface::class)
+            $this->messageBus = $this->createMock(MessageBusInterface::class)
         );
     }
 
@@ -43,18 +45,17 @@ class CreateUserHandlerTest extends TestCase
         $this->handler->__invoke($command);
     }
 
-    public function test_handle_sends_email_notification(): void
+    public function test_handle_dispatches_user_created_event(): void
     {
         $email = 'test@example.com';
         $command = new CreateUserCommand($email);
 
-        $this->mailer->expects(self::once())
-            ->method('send')
-            ->with(
-                $email,
-                'Rejestracja konta',
-                'Zarejestrowano konto w systemie. Aktywacja konta trwa do 24h'
-            );
+        $this->messageBus->expects(self::once())
+            ->method('dispatch')
+            ->with(self::callback(function ($event) use ($email) {
+                return $event instanceof UserCreatedEvent && $event->user->getEmail() === $email;
+            }))
+            ->willReturn(new Envelope(new \stdClass()));
 
         $this->handler->__invoke($command);
     }
